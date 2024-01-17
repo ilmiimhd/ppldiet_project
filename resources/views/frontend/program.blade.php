@@ -1,7 +1,7 @@
 @extends('layouts.frontend')
 
 @section('title')
-    Diet Sehat - Program
+    Dietify - Program
 @endsection
 
 @push('after-style')
@@ -63,9 +63,11 @@
                 @auth
                     @php
                         $userProgram = auth()->user()->userProgram;
+                        // check if user program is active true
+                        // $userProgram = auth()->user()->userProgram->where('is_active', true)->first();
                     @endphp
 
-                    @if ($userProgram)
+                    @if (optional ($userProgram)->is_active)
                         <div class="col-12 text-center mb-4">
                             <h5 class="mb-5">Anda sudah terdaftar dalam program diet</h5>
                             {{-- Tampilkan informasi lainnya jika diperlukan --}}

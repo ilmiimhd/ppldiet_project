@@ -27,8 +27,8 @@ Route::get('/about', function () {
 
 // schedule
 // Route::get('/dashboard', function () {
-//         return view('dashboard');
-//     })->middleware(['auth', 'verified'])->name('dashboard');
+    //     return view('dashboard');
+    // })->middleware(['auth', 'verified'])->name('dashboard');
 
 
 
@@ -48,6 +48,9 @@ Route::get('/about', function () {
         Route::post('/user-program', [\App\Http\Controllers\ProgramController::class, 'userProgram'])->name('frontend.userProgram');
 
         Route::get('/schedule/{dietTypeId}', [\App\Http\Controllers\ProgramController::class, 'userSchedule'])->name('schedule');
+        Route::get('/report/{dietTypeId}', [\App\Http\Controllers\ProgramController::class, 'userReport'])->name('report');
+        Route::post('/report/{dietTypeId}', [\App\Http\Controllers\ProgramController::class, 'storeReport'])->name('report.store');
+
     });
 
 require __DIR__.'/auth.php';

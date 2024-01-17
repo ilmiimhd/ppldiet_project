@@ -11,8 +11,8 @@ class DailyProgress extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'day_id',
         'diet_schedule_id',
+        'user_id',
         'sarapan',
         'snack_pagi',
         'makan_siang',
@@ -20,4 +20,14 @@ class DailyProgress extends Model
         'makan_malam',
 
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function dietSchedule()
+    {
+        return $this->belongsTo(DietSchedule::class);
+    }
 }

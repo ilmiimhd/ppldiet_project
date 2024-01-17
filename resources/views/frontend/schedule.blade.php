@@ -11,6 +11,18 @@
         <div class="row justify-content-center mt-4">
             <div class="col-lg-12 mt-5">
                 <div class="card">
+                    @if(session('success'))
+                        <div class="alert alert-success">
+                            {{ session('success') }}
+                        </div>
+                    @endif
+
+                    {{-- error --}}
+                    @if(session('error'))
+                        <div class="alert alert-danger">
+                            {{ session('error') }}
+                        </div>
+                    @endif
                     <div class="card-header">Jadwal Diet Terbaik Untukmu</div>
                     <div class="d-flex justify-content-between align-items-center card-header">
 
@@ -23,6 +35,18 @@
 
 
                     <div class="card-body mt-4 mb-5">
+                        @php
+                            // $userProgram = auth()->user()->userProgram;
+                            // check is user program is active true
+                            $userProgram = auth()->user()->userProgram->where('is_active', true)->first();
+                        @endphp
+                        @if ($userProgram == null)
+                            <div class="col-12 text-center mb-4">
+                                <h5 class="mb-5">Anda Belum Terdaftar Dalam Program Diet</h5>
+                                {{-- Tampilkan informasi lainnya jika diperlukan --}}
+                                {{-- <a href="{{ route('schedule', ['dietTypeId' => $userProgram->diet_schedule_id]) }}" class="btn custom-btn">Daftar Lagi</a> --}}
+                            </div>
+                        @else
                         <table class="table">
                             <thead>
                                 <tr>
@@ -33,22 +57,88 @@
                                     <th>Makan Siang</th>
                                     <th>Snack Sore</th>
                                     <th>Makan Malam</th>
+                                    <th style="width: 10%">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($dietSchedules as $schedule)
-                                    <tr>
-                                        <td>{{ $schedule['nama_hari'] }}</td>
-                                        <td>{{ $schedule['deskripsi'] }}</td>
-                                        <td>{{ $schedule['sarapan'] }}</td>
-                                        <td>{{ $schedule['snack_pagi'] }}</td>
-                                        <td>{{ $schedule['makan_siang'] }}</td>
-                                        <td>{{ $schedule['snack_sore'] }}</td>
-                                        <td>{{ $schedule['makan_malam'] }}</td>
-                                    </tr>
-                                @endforeach
+                                <tr>
+                                    <td>{{ $schedule['nama_hari'] }}</td>
+                                    <td>{{ $schedule['deskripsi'] }}</td>
+                                    <td>
+                                        @php
+                                            $progressForSchedule = $dailyProgress->where('diet_schedule_id', $schedule['id']);
+                                        @endphp
+                                        @if($progressForSchedule->isNotEmpty())
+                                            {{ $schedule['sarapan'] }} <br>
+                                            @foreach($progressForSchedule as $progress)
+                                                Progress: {{ $progress->sarapan }}<br>
+                                            @endforeach
+                                        @else
+                                            {{ $schedule['sarapan'] }} <br>
+                                            Progress: Belum ada laporan progress
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($progressForSchedule->isNotEmpty())
+                                            {{ $schedule['snack_pagi'] ? $schedule['snack_pagi'] : 'Tidak ada snack' }} <br>
+                                            @foreach($progressForSchedule as $progress)
+                                                Progress: {{ $progress->snack_pagi }}<br>
+                                            @endforeach
+                                        @else
+                                            {{ $schedule['snack_pagi'] ? $schedule['snack_pagi'] : 'Tidak ada snack' }} <br>
+                                            Progress: Belum ada laporan progress
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($progressForSchedule->isNotEmpty())
+                                            {{ $schedule['makan_siang'] }} <br>
+                                            @foreach($progressForSchedule as $progress)
+                                                Progress: {{ $progress->makan_siang }}<br>
+                                            @endforeach
+                                        @else
+                                            {{ $schedule['makan_siang'] }} <br>
+                                            Progress: Belum ada laporan progress
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($progressForSchedule->isNotEmpty())
+                                            {{ $schedule['snack_sore'] ? $schedule['snack_sore'] : 'Tidak ada snack' }} <br>
+                                            @foreach($progressForSchedule as $progress)
+                                                Progress: {{ $progress->snack_sore }}<br>
+                                            @endforeach
+                                        @else
+                                            {{ $schedule['snack_sore'] ? $schedule['snack_sore'] : 'Tidak ada snack' }} <br>
+                                            Progress: Belum ada laporan progress
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($progressForSchedule->isNotEmpty())
+                                            {{ $schedule['makan_malam'] }} <br>
+                                            @foreach($progressForSchedule as $progress)
+                                                Progress: {{ $progress->makan_malam }}<br>
+                                            @endforeach
+                                        @else
+                                            {{ $schedule['makan_malam'] }} <br>
+                                            Progress: Belum ada laporan progress
+                                        @endif
+                                    </td>
+                                    {{-- catat progress --}}
+                                    <td>
+                                        @if($progressForSchedule->isNotEmpty())
+                                            <a href="{{ route('report', ['dietTypeId' => $dietTypeId, 'progressId' => $schedule['id']]) }}" class="btn custom-btn form-control mt-4 mb-3 disabled">Catat Progress</a>
+                                        @else
+                                            <a href="{{ route('report', ['dietTypeId' => $dietTypeId, 'scheduleId' => $schedule['id']]) }}" class="btn custom-btn form-control mt-4 mb-3">Catat Progress</a>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+
+
                             </tbody>
                         </table>
+                        @endif
+                        {{-- <h5 class="card-title">{{ $dietSchedules->nama_hari }}</h5>
                         {{-- <h5 class="card-title">{{ $dietSchedules->nama_hari }}</h5>
                         <p class="card-text">Deskripsi: {{ $dietSchedules->deskripsi }}</p>
                         <p class="card-text">Sarapan: {{ $dietSchedules->sarapan }}</p>

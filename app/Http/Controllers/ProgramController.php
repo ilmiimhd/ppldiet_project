@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\DietSchedule;
 use App\Models\UserProgram;
 use App\Models\UserProfile;
+use App\Models\DailyProgress;
 
 
 class ProgramController extends Controller
@@ -27,12 +28,15 @@ class ProgramController extends Controller
             $dietSchedules = DietSchedule::where('diet_type_id', $userProgram->diet_type_id)->get();
 
             // Check if diet schedules were found
-            if ($dietSchedules->isEmpty()) {
-                return redirect()->route('program')->with([
-                    'error' => 'Tidak ada jadwal diet untuk tipe diet yang dipilih.'
-                ]);
+            // if ($dietSchedules->isEmpty()) {
+            //     return redirect()->route('program')->with([
+            //         'error' => 'Tidak ada jadwal diet untuk tipe diet yang dipilih.'
+            //     ]);
+            // }
+            if ($userProgram->tanggal_selesai && $userProgram->tanggal_selesai < now()) {
+                $userProgram->is_active = false;
+                $userProgram->save();
             }
-
             return view('frontend.index', compact('userProgram', 'dietSchedules'));
         } else {
             // User doesn't have an active program
@@ -60,6 +64,10 @@ class ProgramController extends Controller
             //         'error' => 'Tidak ada jadwal diet untuk tipe diet yang dipilih.'
             //     ]);
             // }
+            if ($userProgram->tanggal_selesai && $userProgram->tanggal_selesai < now()) {
+                $userProgram->is_active = false;
+                $userProgram->save();
+            }
 
             return view('frontend.program', compact('userProgram', 'dietSchedules'));
         } else {
@@ -72,21 +80,13 @@ class ProgramController extends Controller
 
     public function userProgram(Request $request)
     {
-        // validate request
-        // $request->validate([
-        //     'diet_type_id' => 'required',
-        //     'jenis_kelamin' => 'required',
-        //     'tanggal_lahir' => 'required',
-        //     'tinggi_badan' => 'required',
-        //     'berat_badan' => 'required',
-        //     'aktivitas' => 'required',
-        // ]);
-
         // get user
         $user = $request->user();
 
-        // save user profile
-        $user->userProfile()->create([
+        // create or update user profile
+        $user->userProfile()->updateOrCreate([
+            'user_id' => $user->id,
+        ], [
             'diet_type_id' => $request->diet_type_id,
             'tinggi_badan' => $request->tinggi_badan,
             'berat_badan' => $request->berat_badan,
@@ -95,6 +95,15 @@ class ProgramController extends Controller
             'target_berat_badan' => $request->target_berat_badan,
             'aktivitas' => $request->aktivitas,
         ]);
+        // $user->userProfile()->create([
+        //     'diet_type_id' => $request->diet_type_id,
+        //     'tinggi_badan' => $request->tinggi_badan,
+        //     'berat_badan' => $request->berat_badan,
+        //     'umur' => $request->umur,
+        //     'lemak_tubuh' => $request->lemak_tubuh,
+        //     'target_berat_badan' => $request->target_berat_badan,
+        //     'aktivitas' => $request->aktivitas,
+        // ]);
         // dd($request->all());
 
         // save user program
@@ -105,6 +114,7 @@ class ProgramController extends Controller
             'is_active' => true,
         ]);
         // dd($request->all());
+
 
         // return response
         return redirect()->route('program')->with([
@@ -117,7 +127,7 @@ class ProgramController extends Controller
         // Get the active diet program for the current user
         $userProgram = UserProgram::where('user_id', auth()->id())
             ->with('dietSchedule.dietType')
-            ->where('is_active', true)
+            ->where('is_active', 1)
             ->first();
 
         // Mendapatkan jenis diet yang dipilih oleh pengguna dari UserProfile
@@ -136,8 +146,20 @@ class ProgramController extends Controller
         // Get the diet schedules for the selected diet type
         $dietSchedules = DietSchedule::where('diet_type_id', $dietTypeId)->with('dietType')->get();
 
+        // get daily progress for the current user and the selected diet type
+        $dailyProgress = DailyProgress::where('user_id', auth()->id())
+            ->whereHas('dietSchedule', function ($query) use ($dietTypeId) {
+                $query->where('diet_type_id', $dietTypeId);
+            })
+            ->get();
 
-        return view('frontend.schedule', compact('dietSchedules', 'userProgram'));
+        // check if program today is greater than the tanggal selesai
+        if ($userProgram->tanggal_selesai && $userProgram->tanggal_selesai < now()) {
+            $userProgram->is_active = false;
+            $userProgram->save();
+        }
+
+        return view('frontend.schedule', compact('dietSchedules', 'userProgram', 'dietTypeId', 'dailyProgress'));
     }
 
 
@@ -151,6 +173,59 @@ class ProgramController extends Controller
         // Pass data to the view
         return view('dashboard', compact('userPrograms', 'userProfiles', 'dietSchedules'));
     }
+
+    public function userReport(Request $request, $dietTypeId)
+    {
+        // Get the active diet program for the current user
+        $userProgram = UserProgram::where('user_id', auth()->id())
+            ->with('dietSchedule.dietType')
+            ->where('is_active', true)
+            ->first();
+
+        // Mendapatkan jenis diet yang dipilih oleh pengguna dari UserProfile
+        $userProfile = UserProfile::where('user_id', auth()->id())->first();
+
+        // Memeriksa apakah jenis diet yang dipilih oleh pengguna sesuai dengan $dietTypeId
+        $isValidSchedule = $userProfile->diet_type_id == $dietTypeId;
+
+        if (!$isValidSchedule) {
+            return redirect()->route('program')->with([
+                'error' => 'Anda tidak terdaftar di jadwal diet yang dipilih.'
+            ]);
+        }
+        $selectedScheduleId = $request->query('scheduleId');
+
+        // Get the diet schedules for the selected diet type
+        $dietSchedules = DietSchedule::where('diet_type_id', $dietTypeId)->with('dietType')->get();
+
+        return view('frontend.report', compact('dietSchedules', 'userProgram', 'dietTypeId', 'selectedScheduleId'));
+    }
+
+    public function storeReport(Request $request, $dietTypeId)
+    {
+        // Assuming you have a relationship between User and DietSchedule
+        $user = $request->user();
+        $scheduleId = $request->query('scheduleId');
+        $dietSchedule = DietSchedule::find($scheduleId);
+        // dd($scheduleId);
+
+        // Create a new DietProgress instance and save it to the database
+        $dietProgress = DailyProgress::create([
+            'diet_schedule_id' => $dietSchedule->id,
+            'user_id' => $user->id,
+            'sarapan' => $request->input('sarapan'),
+            'snack_pagi' => $request->input('snack_pagi'),
+            'makan_siang' => $request->input('makan_siang'),
+            'snack_sore' => $request->input('snack_sore'),
+            'makan_malam' => $request->input('makan_malam'),
+        ]);
+
+        // Redirect or respond as needed
+        return redirect()->route('schedule', ['dietTypeId' => $dietTypeId])->with([
+            'success' => 'Laporan harian berhasil disimpan.'
+        ]);
+    }
+
 
     /**
      * Show the form for creating a new resource.
