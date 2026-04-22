@@ -22,9 +22,9 @@ Contributions:
 ---
 
 ## ⚙️ Tech Stack
-(isi sesuai yang dipake, misal:)
-- HTML, CSS, JavaScript  
-- PHP / Laravel (kalau ada)  
+- HTML, CSS, JavaScript
+- Bootstrap  
+- PHP / Laravel
 - MySQL  
 
 ---
